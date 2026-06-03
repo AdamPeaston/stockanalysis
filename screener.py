@@ -319,6 +319,77 @@ def _asx_code_to_yfinance_ticker(code: str) -> str:
     return f"{str(code).strip().upper()}.AX"
 
 
+def _yfinance_ticker_to_asx_code(ticker: str) -> str | None:
+    normalized = str(ticker).strip().upper()
+    if normalized.endswith(".AX"):
+        return normalized[:-3]
+    return None
+
+
+def _extract_gics_sector(company_sector) -> str:
+    if isinstance(company_sector, dict):
+        return company_sector.get("gics_sector", "")
+    return ""
+
+
+def _asx_type_label(type_code) -> str:
+    labels = {
+        "01": "Listed company",
+        "06": "Listed trust/stapled security",
+        "07": "ETF",
+        "16": "Structured product",
+        "17": "Preference/security",
+        "21": "Hybrid/security",
+        "33": "ETF",
+        "36": "Active ETF",
+        "51": "Warrant/option/security",
+        "53": "Exchange traded product",
+    }
+    return labels.get(str(type_code).strip(), "")
+
+
+def get_asx_metadata_by_code() -> dict:
+    asx = get_asx()
+    if "code" not in asx.columns:
+        raise ValueError("Expected get_asx() to return a 'code' column")
+
+    metadata = {}
+
+    for _, row in asx.iterrows():
+        code = str(row["code"]).strip().upper()
+        if not code:
+            continue
+
+        type_code = str(row.get("type", "")).strip()
+        metadata[code] = {
+            "asx_code": code,
+            "asx_title": row.get("title", ""),
+            "gics_sector": _extract_gics_sector(row.get("company_sector")),
+            "asx_type_code": type_code,
+            "asx_type_label": _asx_type_label(type_code),
+        }
+
+    return metadata
+
+
+def get_asx_metadata_for_tickers(tickers: list[str]) -> dict:
+    asx_codes = {
+        code
+        for ticker in tickers
+        if (code := _yfinance_ticker_to_asx_code(ticker))
+    }
+
+    if not asx_codes:
+        return {}
+
+    metadata_by_code = get_asx_metadata_by_code()
+
+    return {
+        _asx_code_to_yfinance_ticker(code): metadata_by_code.get(code, {})
+        for code in asx_codes
+    }
+
+
 def _chunks(items: list, batch_size: int):
     for start in range(0, len(items), batch_size):
         yield items[start:start + batch_size]
@@ -329,11 +400,17 @@ def _analyze_asx_ticker_for_csv(
     today_date: str,
     early_horizon_years: int,
     late_horizon_years: int,
+    metadata: dict | None = None,
 ) -> dict:
     ticker = _asx_code_to_yfinance_ticker(code)
+    metadata = metadata or {}
     base_row = {
         "asx_code": str(code).strip().upper(),
         "ticker": ticker,
+        "asx_title": metadata.get("asx_title", ""),
+        "gics_sector": metadata.get("gics_sector", ""),
+        "asx_type_code": metadata.get("asx_type_code", ""),
+        "asx_type_label": metadata.get("asx_type_label", ""),
         "status": "ok",
         "error": "",
         "aggregate_error": "",
@@ -394,20 +471,11 @@ def analyze_all_asx_tickers_to_csv(
         cpu_count = os.cpu_count() or 1
         max_workers = min(16, max(4, cpu_count * 4))
 
-    asx = get_asx()
-    if "code" not in asx.columns:
-        raise ValueError("Expected get_asx() to return a 'code' column")
+    metadata_by_code = get_asx_metadata_by_code()
 
-    codes = (
-        asx["code"]
-        .dropna()
-        .astype(str)
-        .str.strip()
-        .str.upper()
-    )
     codes = [
         code
-        for code in codes
+        for code in metadata_by_code
         if code
     ]
 
@@ -431,6 +499,7 @@ def analyze_all_asx_tickers_to_csv(
                     today_date,
                     early_horizon_years,
                     late_horizon_years,
+                    metadata_by_code.get(code, {}),
                 )
                 for code in batch
             ]
