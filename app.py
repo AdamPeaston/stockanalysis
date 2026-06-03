@@ -6,6 +6,7 @@ import streamlit as st
 
 from screener import analyze_growth_stock_with_data
 from screener import aggregate_analysis
+from screener import get_asx_metadata_for_tickers
 
 
 METRIC_COLUMNS = [
@@ -37,6 +38,9 @@ def flatten_metrics(result):
         "show_chart": False,
         "ticker": result["ticker"],
         "aggregate_score": result["aggregate_score"],
+        "gics_sector": result.get("gics_sector", ""),
+        "asx_type_code": result.get("asx_type_code", ""),
+        "asx_type_label": result.get("asx_type_label", ""),
         "today_date": result["today_date"],
         "early_horizon_date": result["early_horizon_date"],
         "late_horizon_date": result["late_horizon_date"],
@@ -65,6 +69,7 @@ def analyze_tickers(
 ):
     results = {}
     errors = {}
+    asx_metadata = get_asx_metadata_for_tickers(tickers)
 
     for ticker in tickers:
         try:
@@ -74,6 +79,7 @@ def analyze_tickers(
                 early_horizon_years,
                 late_horizon_years,
             )
+            result.update(asx_metadata.get(ticker, {}))
             metrics = {
                 key: value
                 for key, value in result.items()
@@ -258,6 +264,9 @@ def main():
             "show_chart",
             "ticker",
             "aggregate_score",
+            "gics_sector",
+            "asx_type_code",
+            "asx_type_label",
             "today_date",
             "early_horizon_date",
             "late_horizon_date",
