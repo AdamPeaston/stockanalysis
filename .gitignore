@@ -1,0 +1,6 @@
+# python artefacts
+__pycache__/
+
+# data downloads
+data/
+
