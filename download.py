@@ -4,8 +4,18 @@ import pandas as pd
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from screener import get_asx_metadata_by_code, analyze_growth_stock_with_data, aggregate_analysis
-from screener import _asx_code_to_yfinance_ticker, _strip_chart_data, _flatten_analysis_for_csv, _chunks
+from screener import (
+    get_asx_metadata_by_code,
+    analyze_growth_stock_with_data,
+    aggregate_analysis,
+)
+from screener import (
+    _asx_code_to_yfinance_ticker,
+    _strip_chart_data,
+    _flatten_analysis_for_csv,
+    _chunks,
+)
+
 
 def _analyze_asx_ticker_for_csv(
     code: str,
@@ -59,6 +69,7 @@ def _analyze_asx_ticker_for_csv(
             "late_horizon_years": late_horizon_years,
         }
 
+
 def analyze_all_asx_tickers_to_csv(
     output_dir: str = "data",
     today_date: str | None = None,
@@ -84,11 +95,7 @@ def analyze_all_asx_tickers_to_csv(
 
     metadata_by_code = get_asx_metadata_by_code()
 
-    codes = [
-        code
-        for code in metadata_by_code
-        if code
-    ]
+    codes = [code for code in metadata_by_code if code]
 
     if limit is not None:
         codes = codes[:limit]
@@ -127,6 +134,7 @@ def analyze_all_asx_tickers_to_csv(
     df.to_csv(output_path, index=False)
 
     return str(output_path)
+
 
 if __name__ == "__main__":
     analyze_all_asx_tickers_to_csv()

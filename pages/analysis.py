@@ -26,11 +26,7 @@ METRIC_COLUMNS = [
 
 def parse_tickers(raw_tickers: str):
     tickers = raw_tickers.replace(",", "\n").splitlines()
-    return [
-        ticker.strip().upper()
-        for ticker in tickers
-        if ticker.strip()
-    ]
+    return [ticker.strip().upper() for ticker in tickers if ticker.strip()]
 
 
 def flatten_metrics(result):
@@ -80,22 +76,12 @@ def analyze_tickers(
                 late_horizon_years,
             )
             result.update(asx_metadata.get(ticker, {}))
-            metrics = {
-                key: value
-                for key, value in result.items()
-                if key not in {"prices", "fits"}
-            }
             result["aggregate_score"] = aggregate_analysis(result)
             results[ticker] = result
         except Exception as exc:
             errors[ticker] = str(exc)
 
-    table = pd.DataFrame(
-        [
-            flatten_metrics(result)
-            for result in results.values()
-        ]
-    )
+    table = pd.DataFrame([flatten_metrics(result) for result in results.values()])
 
     return results, table, errors
 
@@ -174,9 +160,7 @@ def main():
     )
 
     st.title("Analysis")
-    st.caption(
-        "Compare early and late exponential growth fits across stocks or ETFs."
-    )
+    st.caption("Compare early and late exponential growth fits across stocks or ETFs.")
 
     with st.sidebar:
         st.header("Inputs")
@@ -217,7 +201,9 @@ def main():
         return
 
     if late_horizon_years > early_horizon_years:
-        st.error("Late horizon years must be less than or equal to early horizon years.")
+        st.error(
+            "Late horizon years must be less than or equal to early horizon years."
+        )
         return
 
     if not run_analysis and "analysis_inputs" not in st.session_state:
@@ -241,10 +227,7 @@ def main():
         st.warning("Some tickers could not be analysed.")
         st.dataframe(
             pd.DataFrame(
-                [
-                    {"ticker": ticker, "error": error}
-                    for ticker, error in errors.items()
-                ]
+                [{"ticker": ticker, "error": error} for ticker, error in errors.items()]
             ),
             use_container_width=True,
             hide_index=True,
@@ -283,11 +266,7 @@ def main():
                 help="Tick to display this ticker's chart below.",
             ),
         },
-        disabled=[
-            column
-            for column in column_order
-            if column != "show_chart"
-        ],
+        disabled=[column for column in column_order if column != "show_chart"],
         hide_index=True,
         use_container_width=True,
         height=420,
@@ -303,14 +282,12 @@ def main():
         return
 
     st.subheader("Charts")
-    chart_columns = st.columns(len(selected_tickers))
 
-    for column, ticker in zip(chart_columns, selected_tickers):
-        with column:
-            st.plotly_chart(
-                make_chart(results[ticker]),
-                use_container_width=True,
-            )
+    for ticker in selected_tickers:
+        st.plotly_chart(
+            make_chart(results[ticker]),
+            use_container_width=True,
+        )
 
 
 if __name__ == "__main__":
